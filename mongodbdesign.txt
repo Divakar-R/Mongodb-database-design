@@ -1,0 +1,171 @@
+            TASKS COLLECTIONS
+
+A.Users Collection:
+
+{
+    "_id": ObjectId,
+    "name": String,
+    "email": String,
+    "codekata": {
+        "problems_solved": Number
+    },
+    "attendance": [
+        {
+            "date": Date,
+            "status": String  // "present" or "absent"
+        }
+    ],
+    "tasks": [
+        {
+            "task_id": ObjectId,
+            "submitted": Boolean,
+            "submission_date": Date
+        }
+    ],
+    "mentor_id": ObjectId
+}
+
+
+B.Codekata Collection:
+
+{
+    "_id": ObjectId,
+    "user_id": ObjectId,
+    "problems_solved": Number
+}
+
+
+C.Attendance Collection:
+
+{
+    "_id": ObjectId,
+    "user_id": ObjectId,
+    "date": Date,
+    "status": String  // "present" or "absent"
+}
+
+D.Topics Collection:
+
+{
+    "_id": ObjectId,
+    "title": String,
+    "description": String,
+    "date_taught": Date
+}
+
+E.Tasks Collection:
+
+{
+    "_id": ObjectId,
+    "title": String,
+    "description": String,
+    "due_date": Date
+}
+
+F.CompanyDrives Collection:
+
+{
+    "_id": ObjectId,
+    "company_name": String,
+    "drive_date": Date,
+    "students_appeared": [ObjectId]
+}
+
+G.Mentors Collection:
+
+const octoberTopics = db.topics.find({
+    date_taught: {
+        $gte: ISODate("2020-10-01T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    }
+}).toArray();
+
+const octoberTasks = db.tasks.find({
+    due_date: {
+        $gte: ISODate("2020-10-01T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    }
+}).toArray();
+
+return { topics: octoberTopics, tasks: octoberTasks };
+
+                  TASKS QUERIES
+
+1.Find all the topics and tasks which are taught in the month of October?
+
+const octoberTopics = db.topics.find({
+    date_taught: {
+        $gte: ISODate("2020-10-01T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    }
+}).toArray();
+
+const octoberTasks = db.tasks.find({
+    due_date: {
+        $gte: ISODate("2020-10-01T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    }
+}).toArray();
+
+return { topics: octoberTopics, tasks: octoberTasks };
+
+
+2.Find all the company drives which appeared between 15 Oct 2020 and 31 Oct 2020?
+
+db.company_drives.find({
+    drive_date: {
+        $gte: ISODate("2020-10-15T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    }
+}).toArray();
+
+
+3.Find all the company drives and students who appeared for the placement?
+
+db.company_drives.aggregate([
+    {
+        $lookup: {
+            from: "users",
+            localField: "students_appeared",
+            foreignField: "_id",
+            as: "students"
+        }
+    }
+]).toArray();
+
+
+4.Find the number of problems solved by the user in Codekata?
+db.users.find({}, { name: 1, "codekata.problems_solved": 1 }).toArray();
+
+5.Find all the mentors with mentees count more than 15?
+
+db.mentors.find({
+    $where: "this.mentees.length > 15"
+}).toArray();
+
+
+6.Find the number of users who are absent and task is not submitted between 15 Oct 2020 and 31 Oct 2020?
+
+const absentUsers = db.attendance.find({
+    date: {
+        $gte: ISODate("2020-10-15T00:00:00Z"),
+        $lte: ISODate("2020-10-31T23:59:59Z")
+    },
+    status: "absent"
+}).map(attendance => attendance.user_id);
+
+const usersWithUnsubmittedTasks = db.users.find({
+    _id: { $in: absentUsers },
+    tasks: {
+        $elemMatch: {
+            submitted: false,
+            submission_date: {
+                $gte: ISODate("2020-10-15T00:00:00Z"),
+                $lte: ISODate("2020-10-31T23:59:59Z")
+            }
+        }
+    }
+}).count();
+
+return usersWithUnsubmittedTasks;
+
